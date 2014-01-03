@@ -5,7 +5,7 @@ from icalendar import Calendar, Event
 import json
 import re
 import logging
-import datetime
+from datetime import datetime, timedelta
 import pytz
 import os
 import dateutil.parser
@@ -47,7 +47,7 @@ class RedmineActiveResource(ActiveResource):
 
 class TimeEntries(RedmineActiveResource):
 	_singular = 'time_entry'
-	_since = None
+	_no_older_than = None
 	
 	# Changing the default values.
 	def to_xml(self, root=None, header=True, pretty=False, dasherize=False):
@@ -65,7 +65,7 @@ class TimeEntries(RedmineActiveResource):
 		duration = end - start
 		hours = duration.total_seconds() / (60 * 60)
 
-		if start > datetime.datetime.now(pytz.UTC):
+		if start > datetime.now(pytz.UTC):
 			# We want bother with events in the future.
 			if self.id:
 				log.info("[-] Deleting entry #%s because the event was moved to the future.", self.id)
@@ -75,11 +75,12 @@ class TimeEntries(RedmineActiveResource):
 				log.info("[ ] Skipping creating an entry because the event was in the future.")
 				return
 
-		if self._since and self._since > start:
+		if self._no_older_than and (datetime.now(pytz.UTC) - self._no_older_than) > start:
 			# We want bother with events too long into the past.
 			if self.id:
-				log.info("[-] Deleting entry #%s because the event was too old.", self.id)
-				self.destroy()
+				log.info("[ ] Skipping entry #%s because the event was too old.", self.id)
+				#log.info("[-] Deleting entry #%s because the event was too old.", self.id)
+				#self.destroy()
 				return
 			else:
 				log.info("[ ] Skipping creating an entry because the event was too old.")
@@ -157,26 +158,31 @@ class ICal2RedmineProcessor:
 		# Compiling the regular expressions of the mappings.
 		self.compile_regular_expressions()
 
-		if self.settings["since"]:
-			self.settings["since"] = datetime.datetime.strptime(self.settings["since"], "%m/%d/%Y").replace(tzinfo=pytz.UTC)
-			log.info("Any event before %s will be skipped.", self.settings["since"].ctime())
+		# Compile the update_existing_entries_day_limit
+		self.settings["update_existing_entries_day_limit"] = timedelta( days = self.settings["update_existing_entries_day_limit"] )
 
 		# Setting up active resources.
 		RedmineActiveResource._site = self.settings["redmine_url"]
-		TimeEntries._since = self.settings["since"]
+		TimeEntries._no_older_than = self.settings["update_existing_entries_day_limit"]
 
 	def process(self):
-		log.debug("===== Processing iCal subscriptions =====")
+		log.debug("===== Processing redmine users =====")
 		processed_event_uids = []
 		parsed_user_ids = []
 
-		for subscription in self.settings["subscriptions"]:
-			result = self.process_subscription(subscription["user_id"], subscription["api_key"])
-			if result != None and result != False:
-				processed_event_uids.extend(result)
-				parsed_user_ids.append(subscription["user_id"])
+		# Set the API key
+		RedmineActiveResource._user = self.settings["api_key"]
 
-		log.info("A total of %u iCal events was found when parsing the subscriptions.", len(processed_event_uids))
+		users = self.fetch_redmine_users()
+
+		for user in users:
+			result = self.process_user(user)
+			print result
+			if result:
+				processed_event_uids.extend(result)
+				parsed_user_ids.append(int(user.id))
+
+		log.info("A total of %u iCal events was found when processing the users.", len(processed_event_uids))
 
 		if self.settings["update_existing_entries"]:
 			log.debug("===== Processing Redmine Time entries =====")
@@ -187,11 +193,11 @@ class ICal2RedmineProcessor:
 					if int(entry.user.id) in parsed_user_ids:
 						spent_on = dateutil.parser.parse(entry.spent_on)
 						# And is it within the time period we are interested in?
-						if self.settings["since"] == None or self.settings["since"].replace(tzinfo=None) <= spent_on:
+						if (datetime.now() - self.settings["update_existing_entries_day_limit"]) <= spent_on:
 							log.debug("[-] Removing an ical2redmine time entry (#%u) which was removed from the iCal feed.", int(entry.id))
 							entry.destroy()
 
-
+	'''
 	def process_subscription(self, user_id, api_key):
 		log.debug("Processing user #%u using API key: %s", user_id, api_key)
 		# Update the active resources
@@ -203,6 +209,7 @@ class ICal2RedmineProcessor:
 				# Found the one
 				return self.process_user(user)
 		log.error("No user with this id (%u) was found on the redmine web service.", user_id)
+	'''
 
 	def process_user(self, user):
 		log.info("----- Processing %s %s (%u) -----", user.firstname, user.lastname, int(user.id))
@@ -245,13 +252,13 @@ class ICal2RedmineProcessor:
 		# redmine_url
 		assert self.settings["redmine_url"], "The redmine_url parameter was not sat."
 		log.debug("Redmine URL: %s", self.settings["redmine_url"])
-		# subscriptions
-		assert self.settings["subscriptions"], "The subscriptions parameter was not sat."
-		log.debug("Processing with %u API key(s):", len(self.settings["subscriptions"]))
-		for user_number, entry in enumerate(self.settings["subscriptions"]):
-			assert entry["user_id"], "An entry in the subscriptions list had no user_id value."
-			assert entry["api_key"], "An entry in the subscriptions list had no api_key value."
-			log.debug("[%u/%u] User #%u: %s", user_number+1, len(self.settings["subscriptions"]), entry["user_id"], entry["api_key"])
+		# api_key of an administrator.
+		assert self.settings["api_key"], "The API key of an administrator was not sat."
+		# update_existing_entries
+		assert self.settings["update_existing_entries"] != None, "The update_existing_entries setting was not sat."
+		# update_existing_entries_day_limit
+		assert self.settings["update_existing_entries_day_limit"] != None, "The update_existing_entries_day_limit setting was not sat."
+		self.settings["update_existing_entries_day_limit"] = int(self.settings["update_existing_entries_day_limit"])
 		# custom_time_entry_field_id
 		assert self.settings["custom_time_entry_field_id"], "The custom_time_entry_field_id was not sat."
 		log.debug("Using the time entry custom field with id = %u", self.settings["custom_time_entry_field_id"])
@@ -312,36 +319,14 @@ class ICal2RedmineProcessor:
 		log.debug("Found %u ical2redmine time entries on Redmine.", len(redmine_entries))
 		return redmine_entries
 
-	'''
-	def iterate_entries(self):
-		log.info("Iterating Redmine time entries:")
-		for uid, entry in self.redmine_entries.items():
-			log.debug("\tProcessing Redmine time entry %s", uid)
-			if uid in self.ical_events.keys():
-				event = self.ical_events[uid]
-				# Update this entry from the ical information.
-				mapping = self.determine_mapping(event)
-				if mapping == None:
-					log.info("\t[-] No mapping matches this entry (%s): It will be deleted.", uid)
-					entry.destroy()
-				else:
-					log.info("\t[+] A mapping matches this entry (%s): It will be updated.", uid)
-					entry.update_from_ical(event, mapping["issue"], mapping["activity"], mapping["prepend_comments"])
-			else:
-				log.info("\t[-] This entry (%s) in no longer in the ical feed: It will be deleted.", uid)
-				entry.destroy()
-	'''
-	'''
-	def iterate_events(self):
-		log.info("Iterating ical events (%u left):", len(self.ical_events))
-		# TODO: Remember the self.insert_future_events option.
-		for uid, event in self.ical_events.items():
-			log.debug("\tProcessing ical event %s", uid)
-			mapping = self.determine_mapping(event)
-			if mapping:
-				log.info("\t[+] A mapping matches this event (%s): Maybe it should be created?", uid)
-
-	'''
+	def fetch_redmine_users(self):
+		result = list()
+		users = Users.find()
+		for u in users:
+			field_value = u.get_custom_field_value(self.settings["custom_user_field_id"])
+			if field_value:
+				result.append( u )
+		return result
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
