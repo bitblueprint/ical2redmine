@@ -5,34 +5,38 @@ A tool to keep your redmine time entries updated directly from an ical exportabl
 This tool will create, update and delete time entries on your redmine installation based on ical events from a feed of ical events (such as Google Calendar).
 
 Installing dependencies:
- 1. Python interpreter
- 2. icalendar python module (running ```sudo easy_install icalendar``` after ```sudo apt-get install python-setuptools``` - if the easy_install tool is not installed)
- 3. requests python module (running ...)
+ 1. Redmine 2.2.0 or above (It has only been tested with Redmine 2.4 but I would expect it to work from Redmine 2.2.0 (as it depends the feature to [Impersonate user through REST API auth](http://www.redmine.org/issues/11755))).
+ 2. Python interpreter (tested on v2.7 other versions might work as well).
+ 3. icalendar python module (running ```sudo easy_install icalendar``` after ```sudo apt-get install python-setuptools``` - if the easy_install tool is not installed)
+ 4. requests python module (running ...)
 
 How to install:
- 1. Clone the Github repo onto your local machine or server, running ```git clone https://github.com/kraenhansen/ical2redmine.git``` on a unix/linux machine.
+ 1. Clone the Github repo onto your local machine or server, running ```git clone https://github.com/bitblueprint/ical2redmine.git``` on a unix/linux machine.
  2. Fetch the pyactiveresource dependency submodule by navigating into your newly cloned ical2redmine directory and run ```git submodule update --init```
- 3. You have to build the pyactiveresource dependency by first navigating into the folder: ```cd pyactiveresource``` and then building the library, running: ```python setup.py build```, navigate back to the ical2redmine directory.
+ 3. You have to build the pyactiveresource dependency by first navigating into the folder: ```cd pyactiveresource``` and then building the library, running: ```python setup.py build```, navigate back to the ical2redmine directory. (I hope to add these two manual build steps automatically in the future.)
  4. You have to create two custom variables on your Redmine installation.
   * Login to your redmine installation, using an administrative account.
   * Navigate to _Administration > Custom fields_
-  * Under the tab titled _Spent time_ click the _New custom field_ link, enter a name such as _iCal UID_ and hit the _Save_ button (leaving _Text_ as _Type_ and _Required_ unchecked).
-    * Click the name of the newly created custom field in the table and examine the URL of the page you get sent to, it has the format _/custom_fields/[integer]/edit_ where _[integer]_ is the id of the newly created field, hang onto this as the _custom time entry field id_.
-  * Under the tab titled _Users_ create another customfield named _iCal Time Entry URL_ and follow the same procedure as above. Remember it's id as the _custom user field id_.
- 5. Now copy the settings.example.json file to some other file like settings.json (```cp settings.example.json settings.json```) and start filling in the blank ___'s. Please consult the example file and source-code for details on the values of the parameters.
+  * Under the tab titled _Spent time_ click the _New custom field_ link, enter the name _iCal UID_ and hit the _Save_ button (leaving _Text_ as _Type_ and _Required_ unchecked).
+  * Under the tab titled _Users_ create another customfield named _iCal Time Entry URL_ same options as the other custom field.
+  * NB: It is also possible to give these custom fields other names, but then you have to specify their custom field ids in the ical2redmine settings.json file.
+ 5. Copy the settings.example.json (located in the root of the repository) file to some other file like settings.json (```cp settings.example.json settings.json```) and start filling in the blank ___'s. Please consult the example file and source-code for details on the values of the parameters. (I hope to incorporate a settings guide into the tool sooner or later - until now you have to live with the following.)
   * __redmine_url__: The URL to the redmine installation, into which iCal events should be imported.
-  * __pattern__: A [reqular expression pattern](http://docs.python.org/2/howto/regex.html) for the summary(/title) of the iCal events
-  * __update_existing_entries__: A boolean value true/false, telling the tool if it should update and delete redmine time entries or if it should just create (Note: Only time entries created by the tool will be affected).
-  * __custom_time_entry_field id__: The _id_ of the field created in 4.3
-  * __custom_user_field id__: The _user_ of the field created in 4.4
-  * __since__: A mm/dd/yyyy formatted lower bound on the iCal events to consider when reading the iCal feed and when considering Redmine time entries for update or deletion.
-  * __subscriptions__: A list of objects (one pr. user that the tool should handle) with two fields: __user_id__: The ID of the user: This is visible from the URL when clicking a users name on the _/users_ Redmine page. __api_key__: The API key of that particular user. This is visible on the _My account_ (link in the top-right corner) page, when clicking the _Show_ link below _API access key_ on the light hand side.
+  * __pattern__: A [reqular expression pattern](http://docs.python.org/2/howto/regex.html) for the summary(/title) of the iCal events. This patterns is required to have a named group called "issue_id", this tells ical2redmine which issue to log time on.
+  * __create_entries_no_older_than__: Put a limit onto how old an event can be, to be considered for creation in Redmine. The value should be
+   * A date (in the YYYY-MM-DD format) ex: _"2014-01-20"_ for the 20th of January 2014,
+   * A timedelta in days, ex: _"1 day"_ or _"30 days"_,
+   * A boolean value _true_ or the empty string _""_ if events be created as entries no matter how far in the past they are. (This is default behaviour)
+   * A boolean value _false_ if events should never be created.
+  * __update_entries_no_older_than__: Put a limit onto how old an event can be, to be considered for update in Redmine. Same values as prevouis bullit.
+  * __delete_entries_no_older_than__: Put a limit onto how old an event can be, to be considered for deletion in Redmine. Same values as prevouis bullit.
+  * __custom_time_entry_field_id__: The _id_ of the field created in 4.3 (not needed if you gave it the correct name)
+  * __custom_user_field_id__: The _user_ of the field created in 4.4 (not needed if you gave it the correct name)
+  * __api_key__: The API key of an administrative user. This is visible on the _My account_ (link in the top-right corner) page, when clicking the _Show_ link below _API access key_ on the light hand side.
  6. The final step is to add the URL of the iCal feed to your users account: Again on the _My account_ page add the URL in the newly created _iCal Time Entry URL_ custom field. If you are importing from Google Calendar, follow [this guide](https://support.google.com/calendar/answer/37111?hl=en&ref_topic=1672003) to obtain your private iCal URL. Instead of downloading the .ical file, copy the link. Please note that sharing this link on the Redmine installation will enable administrators to see and change your calendar, so consider using a seperate calendar for this.
- 7. Now create events in the calendar, whereever you would like to report time entries. Using the standard pattern provided in the example settings file, the summary(/title) should contain _(#n)_ where _n_ is an integer referring to an issue id, on which to report time.
+ 7. Now create events in the calendar, whereever you would like to report time entries. Using the standard pattern provided in the example settings file, the summary(/title) should contain _#n_ where _n_ is an integer referring to an issue id, on which to report time.
  8. Now run the tool by executing the following command: ```python ical2redmine.py --settings settings.json```.
  9. Consider setting this up as a periotic [cron job](http://www.adminschoice.com/crontab-quick-reference/) so you don't have to run the tool manually.
-
-It has only been tested with Redmine 2.4 but I would expect it to work from Redmine 2.2.0 (as it depends the feature to [Impersonate user through REST API auth](http://www.redmine.org/issues/11755)).
 
 The process that the processor goes through:
  1. Fetch all users from redmine with the iCal feed specified, loop trough these:
