@@ -1,6 +1,3 @@
 #!/bin/bash
-python setup.py build
-
-#DIR=$(cd "$(dirname "$0")"; pwd)
-#cd $DIR
-#python ical2redmine.py --settings settings.json --log debug
+DIR=$(cd "$(dirname "$0")"; pwd)
+python "$DIR/ical2redmine" --settings settings.json
