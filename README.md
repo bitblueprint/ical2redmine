@@ -7,6 +7,7 @@ This tool will create, update and delete time entries on your redmine installati
 Installing dependencies:
  1. Python interpreter
  2. icalendar python module (running ```sudo easy_install icalendar``` after ```sudo apt-get install python-setuptools``` - if the easy_install tool is not installed)
+ 3. requests python module (running ...)
 
 How to install:
  1. Clone the Github repo onto your local machine or server, running ```git clone https://github.com/kraenhansen/ical2redmine.git``` on a unix/linux machine.
@@ -31,13 +32,17 @@ How to install:
  8. Now run the tool by executing the following command: ```python ical2redmine.py --settings settings.json```.
  9. Consider setting this up as a periotic [cron job](http://www.adminschoice.com/crontab-quick-reference/) so you don't have to run the tool manually.
 
-It has only been tested with Redmine 1.4.6 but I would expect it to work from Redmine 1.4.4 (as it depends the http://www.redmine.org/issues/11112 bugfix).
+It has only been tested with Redmine 2.4 but I would expect it to work from Redmine 2.2.0 (as it depends the feature to [Impersonate user through REST API auth](http://www.redmine.org/issues/11755)).
 
 The process that the processor goes through:
- 1. Fetch the ical feed of events.
- 2. Fetch all time entries in the Redmine service.
- 3. Loop through all iCal events from the ical feed:
+ 1. Fetch all users from redmine with the iCal feed specified, loop trough these:
+ 2. Fetch the iCal feed of events.
+ 3. Fetch all time entries in the Redmine service.
+ 4. Loop through all iCal events from the ical feed:
    * Create time entries for any event in the past (lower bounded by the value of _since_) which does not already have a time entry.
    * If the _update_existing_entries_ flag is set in the settings: Update or delete any time entry, created by the tool, which is related to a particular iCal event.
- 4. If the _update_existing_entries_ flag is set in the settings: Loop through all entries that has been created by the ical2redmine tool to check if they have been passed in the processing of iCal events, if not; They need to be deleted.
+ 5. If the _update_existing_entries_ flag is set in the settings: Loop through all entries that has been created by the ical2redmine tool to check if they have been passed in the processing of iCal events, if not; They need to be deleted.
 
+Further suggestions for implementations:
+ * Consider: Keep a state (a dictionary of hases of the response from fetching iCal URLs) and check if the iCal feed has changed before fetching and looping though Redmine entries.
+ * Add email support to warn users if an event without a comment is created or if an event is referencing an issue on a project where the user is not participating.
