@@ -10,6 +10,9 @@ Installing dependencies:
  3. icalendar python module (running ```sudo easy_install icalendar``` after ```sudo apt-get install python-setuptools``` - if the easy_install tool is not installed)
  4. requests python module (running ...)
 
+Limitations:
+ * At the moment the tool doesn't support recurring events - I have plans to fix this.
+
 How to install:
  1. Clone the Github repo onto your local machine or server, running ```git clone https://github.com/bitblueprint/ical2redmine.git``` on a unix/linux machine.
  2. Fetch the pyactiveresource dependency submodule by navigating into your newly cloned ical2redmine directory and run ```git submodule update --init```
@@ -39,14 +42,15 @@ How to install:
  9. Consider setting this up as a periotic [cron job](http://www.adminschoice.com/crontab-quick-reference/) so you don't have to run the tool manually.
 
 The process that the processor goes through:
- 1. Fetch all users from redmine with the iCal feed specified, loop trough these:
- 2. Fetch the iCal feed of events.
- 3. Fetch all time entries in the Redmine service.
- 4. Loop through all iCal events from the ical feed:
-   * Create time entries for any event in the past (lower bounded by the value of _since_) which does not already have a time entry.
-   * If the _update_existing_entries_ flag is set in the settings: Update or delete any time entry, created by the tool, which is related to a particular iCal event.
- 5. If the _update_existing_entries_ flag is set in the settings: Loop through all entries that has been created by the ical2redmine tool to check if they have been passed in the processing of iCal events, if not; They need to be deleted.
+ 1. Fetch all users from Redmine, filter them such that only the ones with an _iCal Time Entry URL_ custom field sat remains. Loop trough these users one by one:
+   1. Fetch the iCal feed of events, from the URL specified by the user.
+   2. Fetch all the users time entries in Redmine, filter them such that only the ones with the _iCal UID_ custom field sat remains.
+   3. Loop through all iCal events from the ical feed and determine if they should be
+   4. Loop through all the users Redmine events from the ical feed:
 
 Further suggestions for implementations:
  * Consider: Keep a state (a dictionary of hases of the response from fetching iCal URLs) and check if the iCal feed has changed before fetching and looping though Redmine entries.
  * Add email support to warn users if an event without a comment is created or if an event is referencing an issue on a project where the user is not participating.
+ * Implementing the use of SEQUENCE numbers, from the iCal events to detect changes.
+ * Implementing the use of LAST-MODIFIED datetimes, from the iCal events to detect changes.
+ * Implementing the use of CREATED datetimes, from the iCal events to detect new events.

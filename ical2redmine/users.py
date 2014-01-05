@@ -43,7 +43,7 @@ def process(all_users, settings):
 			log.error('Found duplicate uids in Redmine, please fix this manually!')
 			sys.exit(-1)
 		# Process the events.
-		events.process(users_events, users_entries, settings)
+		events.process(users_events, existing_user_entries, settings)
 		# entry_data = {
 		# 	'issue_id': 210,
 		# 	'spent_on': '2014-01-04',

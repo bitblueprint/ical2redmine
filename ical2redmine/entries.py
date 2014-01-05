@@ -20,11 +20,44 @@ def fetch(user, settings):
 			break
 	return result
 
-def create(data):
-	'''Creates time entries in Redmine.'''
+def event2entry(event, issue_id, known_entries, settings):
+	'''Maps an event into an entry, without saving it.'''
+	event_uid = unicode(event.get('UID'))
+	delta = event.get('DTEND').dt-event.get('DTSTART').dt
+	delta_hours = delta.total_seconds() / 3600.0 # 60 secs * 60 minutes in an hour
+	# Check if the UID is in the known entries.
 	entry = TimeEntries()
-	entry.attributes.update(data)
-	return entry.save()
+	if event_uid in known_entries.keys():
+		# Update this 'new' time entry with the values (including id)
+		# of any known entries.
+		entry.attributes.update(known_entries[event_uid].attributes)
+	# This is where we handle repeats, events too old or in the future.
+	entry.attributes.update({
+	 	'issue_id': issue_id,
+	 	'spent_on': event.get('DTSTART').dt.strftime("%Y-%m-%d"),
+	 	'hours': "%.2f" % delta_hours,
+	 	'comments': unicode(event.get('DESCRIPTION')),
+	 	'custom_fields': [{
+	 		"id": unicode(settings['custom_time_entry_field_id']),
+	 		"value": unicode(event.get('UID'))
+	 	}]
+	})
+	return entry
+
+def create(event, issue_id, known_entries, settings):
+	'''Creates time entries in Redmine from an event.'''
+	entry = event2entry(event, issue_id, known_entries, settings)
+	assert entry, "Something went wrong when mapping the event 2 entry."
+	if not entry.id:
+		created = entry.save()
+		if created and entry.id:
+			# TODO: Check that this entry has an id.
+			return entry
+		else:
+			return None
+	else:
+		log.warning("Was asked to create an entry for an event that already exists!")
+		return entry
 
 def update(): #entry, date
 	'''Updates time entries in Redmine.'''
@@ -32,6 +65,10 @@ def update(): #entry, date
 	#return entry.save()
 	log.error("Not implemented!")
 
-def remove(): #entry
-	'''Removes time entries in Redmine.'''
-	log.error("Not implemented!")
+def delete(event, users_entries): #entry
+	'''Removes time entries in Redmine from an event.'''
+	uid = unicode(event.get('UID'))
+	if uid in users_entries.keys():
+		return users_entries[uid].destroy()
+	else:
+		raise ValueError("Couldn't delete the entry as it was not already there.")

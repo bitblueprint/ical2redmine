@@ -166,13 +166,12 @@ def convert_timedelta_settings(settings):
 			day = int(date_match.group('day'))
 			settings[settings_field] = datetime( year=year, month=month, day=day,
 				tzinfo=tzlocal() )
-			# Make it aware
-			settings[settings_field]
 		elif timedelta_match:
 			days = int(timedelta_match.group('days'))
 			latest_datetime = datetime.now( tz=tzlocal() ) - timedelta( days=days )
 			settings[settings_field] = latest_datetime
 		elif settings_value == "" or settings_value == True:
+			# Do it no matter the date.
 			# Setting to True, in case of an empty string.
 			settings[settings_field] = True
 		elif settings_value == False:
