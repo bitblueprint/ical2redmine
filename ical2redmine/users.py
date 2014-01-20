@@ -1,8 +1,7 @@
 '''This module fetches and processes users from Redmine'''
-# We need the log
 import sys
 from ical2redmine.logger import LOG as log
-from ical2redmine import events, entries, redmine
+from ical2redmine import events, entries, redmine, destinator, summary
 
 def fetch(settings):
 	'''Fetches users from Redmine'''
@@ -43,15 +42,23 @@ def process(all_users, settings):
 			log.error('Found duplicate uids in Redmine, please fix this manually!')
 			sys.exit(-1)
 		# Process the events.
-		events.process(users_events, existing_user_entries, settings)
-		# entry_data = {
-		# 	'issue_id': 210,
-		# 	'spent_on': '2014-01-04',
-		# 	'hours': 1,
-		# 	'comments': 'Created via script.',
-		# 	'custom_fields': [{
-		# 		"id": str(settings['custom_time_entry_field_id']),
-		# 		"value": 'automatically'
-		# 	}]
-		# }
-		# result = entries.create(entry_data)
+		summary_report = events.process(users_events, existing_user_entries, settings)
+		log.info("Skipped: %u", summary_report[destinator.DESTINY_SKIP])
+		log.info("Entries created: %u", summary_report[destinator.DESTINY_CREATE])
+		log.info("Entries updated: %u", summary_report[destinator.DESTINY_UPDATE])
+		log.info("Entries deleted: %u", summary_report[destinator.DESTINY_DELETE])
+		log.info("Recurring events found: %u", summary_report["recurring_events"])
+		log.info("Errors: %u", len(summary_report['errors']))
+		for err in summary_report['errors']:
+			log.error("Error '%s': when an entry for issue #%u was attempted %s." % (
+				err['exp'],
+				int(err['issue_id']),
+				err['destiny']
+			))
+		should_send_summary = summary_report[destinator.DESTINY_CREATE] > 0 or \
+			summary_report[destinator.DESTINY_UPDATE] > 0 or \
+			summary_report[destinator.DESTINY_DELETE] > 0 or \
+			len(summary_report['errors']) > 0
+			# TODO: Consider that this might end up spamming the user.
+		if should_send_summary:
+			summary.send(summary_report, user, settings)

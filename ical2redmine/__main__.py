@@ -2,7 +2,6 @@
 import logging, argparse, os, sys, json, re
 # Append the parent directory in the system path.
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
-# Get a global logger called log.
 from ical2redmine.logger import LOG as log
 from datetime import datetime, timedelta
 from dateutil.tz import tzlocal
@@ -13,9 +12,10 @@ DEFAULT_SETTINGS = {
 	"update_entries": True,
 	"custom_user_field_name": "iCal Time Entry URL",
 	"custom_time_entry_field_name": "iCal UID",
-	"create_entries_no_older_than": "", # Always create events.
-	"update_entries_no_older_than": "", # Always update events.
-	"delete_entries_no_older_than": "" # Always delete events.
+	"ignore_events_older_than": "", # Never ignore events
+	"freeze_entries_older_than": "", # Never freeze entries.,
+	"mail_send_summary": False,
+	"mail_summary_subject": "Summary from iCal2Redmine"
 }
 
 LOG_LEVELS = [ 'debug', 'info', 'warning', 'error', 'critical' ]
@@ -23,8 +23,9 @@ LOG_LEVELS = [ 'debug', 'info', 'warning', 'error', 'critical' ]
 DATE_PATTERN = "(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})" # ISO
 TIMEDELTA_PATTERN = "(?P<days>\d+) ?days?" # timedelta
 
-TIMEDELTA_SETTINGS_FIELDS = [ "create_entries_no_older_than",
-	"update_entries_no_older_than", "delete_entries_no_older_than"]
+TIMEDELTA_SETTINGS_FIELDS = [
+	"ignore_events_older_than", "freeze_entries_older_than"
+]
 
 def print_logo():
 	'''A function that prints the logo to the output'''
@@ -117,6 +118,13 @@ def check_settings(settings):
 		assert field in settings.keys(), "Required field '%s' was not set in the"\
 		" settings file, please consult settings.example.json to learn the"\
 		" correct fieldnames." % field
+	if 'mail_send_summary' in settings.keys() and settings['mail_send_summary']:
+		assert 'mail_from' in settings.keys(), \
+			"Required field 'mail_from' when mail_send_summary = true"
+		assert 'mail_smtp_host' in settings.keys(), \
+		"Required field 'mail_smtp_host' when mail_send_summary = true"
+		assert 'mail_smtp_user' in settings.keys(), \
+		"Required field 'mail_smtp_user' when mail_send_summary = true"
 
 def unload_lib(package_name):
 	'''Unloading a package .egg'''
@@ -170,12 +178,9 @@ def convert_timedelta_settings(settings):
 			days = int(timedelta_match.group('days'))
 			latest_datetime = datetime.now( tz=tzlocal() ) - timedelta( days=days )
 			settings[settings_field] = latest_datetime
-		elif settings_value == "" or settings_value == True:
+		elif settings_value == "":
 			# Do it no matter the date.
 			# Setting to True, in case of an empty string.
-			settings[settings_field] = True
-		elif settings_value == False:
-			# Never do it!
 			continue
 		else:
 			raise ValueError("The value of the %s field in the settings, "\
