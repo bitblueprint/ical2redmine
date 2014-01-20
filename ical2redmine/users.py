@@ -23,7 +23,11 @@ def process(all_users, settings):
 		ical_url = user.get_custom_field_value(settings['custom_user_field_id'])
 		assert ical_url, "The iCal customfield was not sat for this particular user."
 		# Fetch the events.
-		users_events = events.fetch(ical_url)
+		try:
+			users_events = events.fetch(ical_url)
+		except Exception as err:
+			log.error( "Couldn't fetch iCal events: %s", err )
+			continue
 		log.info( "Found %u events in the iCal feed." % len(users_events) )
 		# Fetch all Redmine time entries for this particular user.
 		users_entries = entries.fetch(user, settings)
