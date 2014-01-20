@@ -8,7 +8,7 @@ Installing dependencies:
  1. Redmine 2.2.0 or above (It has only been tested with Redmine 2.4 but I would expect it to work from Redmine 2.2.0 (as it depends the feature to [Impersonate user through REST API auth](http://www.redmine.org/issues/11755))).
  2. Python interpreter (tested on v2.7 other versions might work as well).
  3. icalendar python module (running ```sudo easy_install icalendar``` after ```sudo apt-get install python-setuptools``` - if the easy_install tool is not installed)
- 4. requests python module (running ``sudo easy_install requests```)
+ 4. requests python module (running ```sudo easy_install requests```)
 
 Limitations:
  * At the moment the tool doesn't support recurring events - I have plans to fix this.
