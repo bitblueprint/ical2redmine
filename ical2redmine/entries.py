@@ -19,6 +19,8 @@ def fetch(user, settings):
 			break
 	return result
 
+COMMENT_MAX_LENGTH = 255
+
 def event2entry(event, issue_id, known_entries, settings):
 	'''Maps an event into an entry, without saving it.'''
 	event_uid = unicode(event.get('UID'))
@@ -30,12 +32,17 @@ def event2entry(event, issue_id, known_entries, settings):
 		# Update this 'new' time entry with the values (including id)
 		# of any known entries.
 		entry.attributes.update(known_entries[event_uid].attributes)
+	trimmed_comment = unicode(event.get('DESCRIPTION'))
+	if len(trimmed_comment) > COMMENT_MAX_LENGTH:
+		postfix = " [...]"
+		trimmed_comment = trimmed_comment[:COMMENT_MAX_LENGTH-1-len(postfix)]
+		trimmed_comment += postfix
 	# This is where we handle repeats, events too old or in the future.
 	entry.attributes.update({
 	 	'issue_id': issue_id,
 	 	'spent_on': event.get('DTSTART').dt.strftime("%Y-%m-%d"),
 	 	'hours': "%.1f" % delta_hours,
-	 	'comments': unicode(event.get('DESCRIPTION')),
+	 	'comments': trimmed_comment,
 	 	'custom_fields': [{
 	 		"id": unicode(settings['custom_time_entry_field_id']),
 	 		"value": unicode(event.get('UID'))
