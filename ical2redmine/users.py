@@ -47,7 +47,8 @@ def process(all_users, settings):
 			sys.exit(-1)
 		# Process the events.
 		summary_report = events.process(users_events, existing_user_entries, settings)
-		# TODO: Find out if there are events that needs to be removed, because they were removed as events.
+		# TODO: Find out if there are events that needs to be removed,
+		# because they were removed as events.
 		log.info("Skipped: %u", summary_report[destinator.DESTINY_SKIP])
 		log.info("Entries created: %u" % summary_report[destinator.DESTINY_CREATE])
 		log.info("Entries updated: %u" % summary_report[destinator.DESTINY_UPDATE])

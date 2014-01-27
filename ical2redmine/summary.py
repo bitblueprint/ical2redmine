@@ -90,7 +90,8 @@ def send(summary_report, user, settings):
 	# Record the MIME types of both parts - text/plain and text/html.
 	msg.attach( MIMEText(simple_message.encode('utf-8'), 'plain', 'utf-8') )
 	msg.attach( MIMEText(html_message.encode('utf-8'), 'html', 'utf-8') )
-	log.debug("=== Sending mail to %s ===\n\t%s\n=== END OF MESSAGE ===", msg['To'], "\n\t".simple_message.split("\n"))
+	log.debug("=== Sending mail to %s ===\n\t%s\n=== END OF MESSAGE ===",
+		msg['To'], "\n\t".join(simple_message.split("\n")))
 	smtp = smtplib.SMTP_SSL(settings['mail_smtp_host'])
 	smtp.login(settings['mail_smtp_user'], settings['mail_smtp_password'])
 	response = smtp.sendmail(msg['From'], msg['To'], msg.as_string())
