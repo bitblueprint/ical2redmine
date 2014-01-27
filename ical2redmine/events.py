@@ -12,7 +12,7 @@ def localize_timezones(event):
 		if isinstance(field_value, icalendar.prop.vDDDTypes):
 			# Is this infact a datetime?
 			if isinstance(field_value.dt, datetime):
-				event.set(field_name, field_value.dt.astimezone( tzlocal() ) )
+				event[field_name].dt = field_value.dt.astimezone( tzlocal() )
 	return event
 
 def fetch(ical_url):
