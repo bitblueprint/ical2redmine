@@ -52,15 +52,15 @@ def send(summary_report, user, settings):
 			summary_report[destinator.DESTINY_DELETE])
 		html_lines.append("<p>Entries deleted: %u</p>" %
 			summary_report[destinator.DESTINY_DELETE])
-	if summary_report["recurring_events"] > 0:
+	if len(summary_report["recurring_events"]) > 0:
 		simple_lines.append("Recurring events found: %u." %
-			summary_report["recurring_events"])
+			len(summary_report["recurring_events"]))
 		html_lines.append("<p>Recurring events found: %u.</p>" %
-			summary_report["recurring_events"])
+			len(summary_report["recurring_events"]))
 		html_lines.append("<ul>")
-		for recurring_event in summary_report["recurring_events"]:
-			simple_lines.append("- %s" % event2str(recurring_event) )
-			html_lines.append("<li>%s</li>" % event2str(recurring_event) )
+		for uid, recurring_event in summary_report["recurring_events"].items():
+			simple_lines.append("- %s" % event2str(recurring_event[0]) )
+			html_lines.append("<li>%s</li>" % event2str(recurring_event[0]) )
 		html_lines.append("</ul>")
 		simple_lines.append("Recurring events are not supported!")
 		html_lines.append("<p><b>Recurring events are not supported!</b></p>")
@@ -90,6 +90,7 @@ def send(summary_report, user, settings):
 	# Record the MIME types of both parts - text/plain and text/html.
 	msg.attach( MIMEText(simple_message.encode('utf-8'), 'plain', 'utf-8') )
 	msg.attach( MIMEText(html_message.encode('utf-8'), 'html', 'utf-8') )
+	log.debug("Sending mail to %s: %s", msg['To'], simple_message)
 	smtp = smtplib.SMTP_SSL(settings['mail_smtp_host'])
 	smtp.login(settings['mail_smtp_user'], settings['mail_smtp_password'])
 	response = smtp.sendmail(msg['From'], msg['To'], msg.as_string())

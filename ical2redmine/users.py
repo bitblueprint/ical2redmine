@@ -48,10 +48,10 @@ def process(all_users, settings):
 		# Process the events.
 		summary_report = events.process(users_events, existing_user_entries, settings)
 		log.info("Skipped: %u", summary_report[destinator.DESTINY_SKIP])
-		log.info("Entries created: %u", summary_report[destinator.DESTINY_CREATE])
-		log.info("Entries updated: %u", summary_report[destinator.DESTINY_UPDATE])
-		log.info("Entries deleted: %u", summary_report[destinator.DESTINY_DELETE])
-		log.info("Recurring events found: %u", summary_report["recurring_events"])
+		log.info("Entries created: %u" % summary_report[destinator.DESTINY_CREATE])
+		log.info("Entries updated: %u" % summary_report[destinator.DESTINY_UPDATE])
+		log.info("Entries deleted: %u" % summary_report[destinator.DESTINY_DELETE])
+		log.info("Recurring events: %u" % len(summary_report["recurring_events"]))
 		log.info("Errors: %u", len(summary_report['errors']))
 		for err in summary_report['errors']:
 			log.error("Error '%s': when an entry for issue #%u was attempted %s." % (

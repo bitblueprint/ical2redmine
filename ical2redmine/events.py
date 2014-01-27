@@ -35,7 +35,7 @@ def fetch(ical_url):
 	return result
 
 def find_recurring_events(in_events):
-	'''This function expands recurrances of events, within a time interval'''
+	'''This function finds recurrances of events'''
 	result = {}
 	for uid, (event, issue_id) in in_events.items():
 		if event.get('RRULE'): # TODO: Need to implement support for this.
@@ -50,7 +50,7 @@ def expand_recurrances(recurring_events, start=False, end=None ):
 		end = datetime.now(tzlocal())
 	log.error("The expand rrules functionality has not yet been implemented.")
 	result = {}
-	for uid, (event, issue_id) in recurring_events.items():
+	for (event, issue_id) in recurring_events.values():
 		log.debug("RRULE found!")
 		rrule = event.get('RRULE')
 		#for recurrance in recurrances:
@@ -83,7 +83,7 @@ def process(users_events, users_entries, settings):
 	original_matching_events_count = len(matching_events)
 	# Check for recurring events (currently not supported).
 	recurring_events = find_recurring_events(matching_events)
-	summary["recurring_events"] = len(recurring_events)
+	summary["recurring_events"] = recurring_events
 	# matching_events.update(expand_recurrances(recurring_events))
 	log.info("Found %u events in the iCal feed matching the pattern," \
 		" which was expanded to %u when expading rrules.",
