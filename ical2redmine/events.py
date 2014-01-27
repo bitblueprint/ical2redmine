@@ -110,6 +110,7 @@ def process(users_events, users_entries, settings):
 				log.error("Unsupported destiny!")
 			summary[destiny] += 1
 		except Exception as exp:
+			log.exception("Error when entry was appempted %s: %s", destiny, exp)
 			summary['errors'].append({
 				'uid': uid,
 				'event': event,
